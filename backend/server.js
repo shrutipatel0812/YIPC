@@ -18,6 +18,14 @@ const port = process.env.PORT || 5000;
 mongoose.connect('mongodb://localhost:27017/yipc', { useNewUrlParser: true ,useUnifiedTopology: true}).
   catch(error => handleError(error));
 
+const recruiterRouter = require("./routes/recruiter");
+  app.use("/recruiters", recruiterRouter);
+
+const JobRouter = require("./routes/jobs");
+  app.use("/jobs", JobRouter);
+
+const studentRouter = require("./routes/student");
+  app.use("/students", studentRouter);
 
 app.listen(port, () => {
     console.log(`Server is running on port: ${port}`);
