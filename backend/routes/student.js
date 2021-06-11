@@ -49,7 +49,7 @@ router.post('/register',async(req,res)=>{
               );
           
               // send the token in a HTTP-only cookie
-                console.log(req.user);
+               
               res
                 .cookie("token", token, {
                   httpOnly: true,
@@ -123,9 +123,11 @@ router.get('/loggedIn' ,(req,res)=>{
     
         const verified = jwt.verify(token ,process.env.JWT_SECRET)
             
-            req.user=verified.user;
-          console.log(req.user);
-      res.send(req.userType);
+            req.userType=verified.userType;
+        if(req.userType=== "student"){
+            res.send(true);
+        }
+      res.send(false);
   }catch(err){
       res.json(false)
   }
