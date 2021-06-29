@@ -2,6 +2,9 @@ const router = require("express").Router();
 const Student =require("../models/studentsModels");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_AUTH);
+const fetch= require('node-fetch');
 
 require("dotenv").config();
 
@@ -10,10 +13,10 @@ require("dotenv").config();
 router.post('/register',async(req,res)=>{
     try{
 
-        const { email, password, confirmPassword} = req.body;
+        const { firstName , lastName ,phoneNo,email, password, confirmPassword} = req.body;
 
-        if (!email || !password || !confirmPassword)
-        return res
+        if (!firstName||!lastName||!phoneNo||!email || !password || !confirmPassword)
+        return reo
             .status(400)
             .json({ errorMessage: "Please enter all required fields." });
         
@@ -33,7 +36,10 @@ router.post('/register',async(req,res)=>{
 
 
             const newStudent = new Student({
+                firstName,
+                lastName,
                 email,
+                phoneNo,
                 passwordHash,
               });
 
@@ -145,6 +151,163 @@ router.get("/logout", (req, res) => {
       .send();
   });
 
+
+
+  router.post("/googleLogin",async(req,res)=>{
+    const {tokenId} = req.body;
+    client.verifyIdToken({idToken:tokenId, audience:process.env.GOOGLE_AUTH})
+    .then(response =>{
+        const{email_verified, name,email}=response.payload;
+        console.log(response.payload);
+        console.log(email_verified);
+        if(email_verified){
+          console.log("email_verified");
+          Student.findOne({email}).exec(async(err ,student)=>{
+            if(err){
+              return res.status(400).json({
+                error:"somthing went wrong"
+              })
+            }else{
+              if(student){
+                
+            const token = jwt.sign(
+                {
+                    user: student._id,
+                    userType:"student"
+                },
+                process.env.JWT_SECRET
+              );
+          
+              // send the token in a HTTP-only cookie
+               
+              res
+                .cookie("token", token, {
+                  httpOnly: true,
+                  secure: true,
+                  sameSite: "none",
+                })
+                .send();
+                  
+              }else{
+                let password = email+ process.env.JWT_SECRET;
+                const salt = await bcrypt.genSalt();
+                const passwordHash = await bcrypt.hash(password, salt);
+                const newStudent = new Student({email,passwordHash});
+                newStudent.save((err,data)=>{
+                  if(err){
+                    return res.status(400).json({
+                      error:"Somthing went wrong"
+                    })
+                  }
+                  
+            const token = jwt.sign(
+                {
+                    user: newStudent._id,
+                    userType:"student"
+                },
+                process.env.JWT_SECRET
+              );
+          
+              // send the token in a HTTP-only cookie
+               
+              res
+                .cookie("token", token, {
+                  httpOnly: true,
+                  secure: true,
+                  sameSite: "none",
+                })
+                .send();
+                })
+              }
+            }
+          })
+        }else{
+          console.log("email not verified");
+        }
+    })
+})
+
+
+router.post("/facebookLogin",(req,res)=>{
+    console.log('FACEBOOK LOGIN REQ BODY', req.body);
+    const { userID, accessToken } = req.body;
+  
+    const url = `https://graph.facebook.com/v2.11/${userID}/?fields=id,name,email&access_token=${accessToken}`;
+  
+    return (
+      fetch(url, {
+        method: 'GET'
+      })
+        .then(response => response.json())
+        // .then(response => console.log(response))
+        .then(response => {
+          const { email, name } = response;
+          Student.findOne({ email }).exec(async(err, student) => {
+            if(err){
+              return res.status(400).json({
+                error:"somthing went wrong"
+              })
+            }else{
+              if(student){
+                const token = jwt.sign(
+                  {
+                    user: student._id,
+                  },
+                  process.env.JWT_SECRET
+                );
+            
+                // send the token in a HTTP-only cookie
+                  console.log(token);
+                res
+                  .cookie("token", token, {
+                    httpOnly: true,
+                   
+                  })
+                  .send();
+            } else {
+              let password = email+ process.env.JWT_SECRET;
+            const salt = await bcrypt.genSalt();
+            const passwordHash = await bcrypt.hash(password, salt);
+            const newStudent = new Student({email,passwordHash});
+                newStudent.save((err,data)=>{
+                    if(err){
+                        return res.status(400).json({
+                        error:"Somthing went wrong"
+                        })
+                    }
+                    
+              const token = jwt.sign(
+                  {
+                        user: newStudent._id,
+                        userType:"student"
+                  },
+                  process.env.JWT_SECRET
+                );
+            
+                // send the token in a HTTP-only cookie
+                 
+                res
+                  .cookie("token", token, {
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: "none",
+                  })
+                  .send();
+                  })
+             
+            }
+          }
+          });
+        })
+        .catch(error => {
+          res.json({
+            error: 'Facebook login failed. Try later'
+          });
+        })
+    );
+  });
+  
+  
 
 router.post("/:_id/profile",async(req,res)=>{
     try{

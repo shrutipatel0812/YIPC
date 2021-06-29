@@ -2,6 +2,7 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const cors =require("cors");
+import formRoutes from './routes/form.js';
 
 require("dotenv").config();
 
@@ -17,6 +18,8 @@ const port = process.env.PORT || 5000;
 
 mongoose.connect('mongodb://localhost:27017/yipc', { useNewUrlParser: true ,useUnifiedTopology: true}).
   catch(error => handleError(error));
+  
+  app.use('/updates' , formRoutes);
 
 const recruiterRouter = require("./routes/recruiter");
   app.use("/recruiters", recruiterRouter);

@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 
 const recruitersSchema= new mongoose.Schema({
     passwordHash:{type:"String"},
+    companyName:{type:"String"},
     name:{type:"String"},
     domain:{type:"String"},
     address:{type:"String"},
